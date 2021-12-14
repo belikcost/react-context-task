@@ -1,19 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
-import {
-    CircularProgress,
-    Paper,
-    Table,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Typography
-} from '@material-ui/core';
+import { CircularProgress, Paper, Table, TableContainer, } from '@material-ui/core';
 
-import { AppContextInterface, TodoInterface } from './types';
+import {
+    AppContextInterface,
+    ChangeTodoInterface, MoveTodoInterface,
+    RemoveTodoInterface,
+    SortTodosInterface,
+    TodoInterface
+} from './types';
 
 import Todos from "./components/Todos";
+import TodosTableHeader from "./components/TodosTableHeader";
+
 import { OrderEnums } from "./enums";
 
 
@@ -25,10 +24,6 @@ const useStyles = makeStyles({
         margin: '0 auto',
         display: 'block'
     },
-    headcell: {
-        cursor: 'pointer',
-        display: 'inline-block'
-    }
 });
 
 const INITIAL_TODOS = [
@@ -63,122 +58,117 @@ const App = () => {
     const classes = useStyles();
 
     useEffect(() => {
-        sortTable('createdAt');
+        sortTodos('createdAt');
         setIsLoading(false);
     }, []);
 
-    const moveUp = (name: string) => {
-        const target = todos.find(e => e.name === name);
+    const moveUpTodo: MoveTodoInterface = useCallback(
+        (name) => setTodos((prevTodos) => {
+            const target = prevTodos.find(e => e.name === name);
 
-        if (!target) {
-            return;
-        }
+            if (!target) {
+                return prevTodos;
+            }
 
-        const todoIndex = todos.indexOf(target);
-        const nextIndex = todoIndex !== 0 ? todoIndex - 1 : todos.length - 1;
+            const todoIndex = prevTodos.indexOf(target);
+            const nextIndex = todoIndex !== 0 ? todoIndex - 1 : prevTodos.length - 1;
 
-        const newTodos = todos.map((t, i) => {
-            if (t.name === name) {
-                return todos[nextIndex];
-            } else if (i === nextIndex) {
-                return target;
+            return prevTodos.map((t, i) => {
+                if (t.name === name) {
+                    return prevTodos[nextIndex];
+                } else if (i === nextIndex) {
+                    return target;
+                } else {
+                    return t;
+                }
+            });
+        }), []
+    );
+
+    const moveDownTodo: MoveTodoInterface = useCallback(
+        (name) => setTodos((prevTodos) => {
+            const target = prevTodos.find(e => e.name === name);
+
+            if (!target) {
+                return prevTodos;
+            }
+
+            const todoIndex = prevTodos.indexOf(target);
+
+            const isLastTodo = todoIndex === prevTodos.length - 1;
+            const nextIndex = isLastTodo ? 0 : todoIndex + 1;
+
+            return prevTodos.map((todo, i) => {
+                if (todo.name === name) {
+                    return prevTodos[nextIndex];
+                } else if (i === nextIndex) {
+                    return target;
+                } else {
+                    return todo;
+                }
+            });
+        }), []
+    );
+
+    const revertOrder = useCallback(
+        () => setOrder((prevOrder) => {
+            if (prevOrder === OrderEnums.ascending) {
+                return OrderEnums.descending;
+            } else if (prevOrder === OrderEnums.descending) {
+                return OrderEnums.ascending;
             } else {
-                return t;
+                return prevOrder;
             }
-        });
+        }), []
+    );
 
-        setTodos(newTodos);
-    };
+    const sortTodos: SortTodosInterface = useCallback(
+        (cell) => setTodos((prevTodos) => {
+            const sortedTodos = [...prevTodos].sort((current, next) => {
+                type ComparedValues = string | number | boolean | Date;
 
-    const moveDown = (name: string) => {
-        const target = todos.find(e => e.name === name);
+                let currentValue: ComparedValues = current[cell];
+                let nextValue: ComparedValues = next[cell];
 
-        if (!target) {
-            return;
-        }
+                if (cell === 'createdAt') {
+                    currentValue = new Date(currentValue as string);
+                    nextValue = new Date(nextValue as string);
+                }
 
-        const todoIndex = todos.indexOf(target);
+                if (currentValue < nextValue) {
+                    return order === OrderEnums.ascending ? -1 : 1;
+                } else if (currentValue > nextValue) {
+                    return order === OrderEnums.ascending ? 1 : -1;
+                } else {
+                    return 0;
+                }
+            });
 
-        const isLastTodo = todoIndex === todos.length - 1;
-        const nextIndex = isLastTodo ? 0 : todoIndex + 1;
+            revertOrder();
+            return sortedTodos;
+        }), []
+    );
 
-        const newTodos = todos.map((todo, i) => {
-            if (todo.name === name) {
-                return todos[nextIndex];
-            } else if (i === nextIndex) {
-                return target;
-            } else {
-                return todo;
-            }
-        });
+    const removeTodo: RemoveTodoInterface = useCallback(
+        (name) => {
+            setTodos((prevTodos) => prevTodos.filter(e => e.name !== name));
+        }, []
+    );
 
-        setTodos(newTodos);
-    };
-
-    const revertOrder = () => {
-        if (order === OrderEnums.ascending) {
-            setOrder(OrderEnums.descending);
-        } else if (order === OrderEnums.descending) {
-            setOrder(OrderEnums.ascending);
-        }
-    };
-
-    const sortTable = (cell: keyof TodoInterface) => {
-        const sortedTodos = [...todos].sort((current, next) => {
-            type ComparedValues = string | number | boolean | Date;
-
-            let currentValue: ComparedValues = current[cell];
-            let nextValue: ComparedValues = next[cell];
-
-            if (cell === 'createdAt') {
-                currentValue = new Date(currentValue as string);
-                nextValue = new Date(nextValue as string);
-            }
-
-            if (currentValue < nextValue) {
-                return order === OrderEnums.ascending ? -1 : 1;
-            } else if (currentValue > nextValue) {
-                return order === OrderEnums.ascending ? 1 : -1;
-            } else {
-                return 0;
-            }
-        });
-
-        setTodos(sortedTodos);
-        revertOrder();
-    };
+    const changeTodo: ChangeTodoInterface = useCallback(
+        (changedTodo: TodoInterface) => setTodos((prevTodos) => {
+            return prevTodos.map(todo => todo.name === changedTodo.name ? changedTodo : todo);
+        }), []
+    )
 
     if (isLoading) {
         return <CircularProgress className={classes.loading}/>
     } else {
         return (
-            <AppContext.Provider value={{ todos, setTodos, moveUp, moveDown }}>
+            <AppContext.Provider value={{ todos, removeTodo, moveUpTodo, moveDownTodo, changeTodo }}>
                 <TableContainer component={Paper}>
                     <Table className={classes.table} size="small" aria-label="a dense table">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>
-                                    <Typography variant="subtitle2">&nbsp;</Typography>
-                                </TableCell>
-                                <TableCell onClick={() => sortTable('name')}>
-                                    <Typography variant="subtitle2" className={classes.headcell}>Название</Typography>
-                                </TableCell>
-                                <TableCell align="right" onClick={() => sortTable('desc')}>
-                                    <Typography variant="subtitle2" className={classes.headcell}>Описание</Typography>
-                                </TableCell>
-                                <TableCell align="right" onClick={() => sortTable('isActive')}>
-                                    <Typography variant="subtitle2" className={classes.headcell}>Активность</Typography>
-                                </TableCell>
-                                <TableCell align="right" onClick={() => sortTable('createdAt')}>
-                                    <Typography variant="subtitle2" className={classes.headcell}>
-                                        Дата создания
-                                    </Typography>
-                                </TableCell>
-                                <TableCell>
-                                    <Typography variant="subtitle2">&nbsp;</Typography>
-                                </TableCell>
-                            </TableRow>
-                        </TableHead>
+                        <TodosTableHeader sortTodos={sortTodos}/>
                         <Todos/>
                     </Table>
                 </TableContainer>

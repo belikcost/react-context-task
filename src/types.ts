@@ -1,5 +1,3 @@
-import { Dispatch, SetStateAction } from "react";
-
 interface TodoInterface {
     name: string,
     desc: string,
@@ -7,11 +5,35 @@ interface TodoInterface {
     createdAt: string
 }
 
-interface AppContextInterface {
-    todos: TodoInterface[];
-    setTodos?: Dispatch<SetStateAction<TodoInterface[]>>;
-    moveUp?: (name: string) => void;
-    moveDown?: (name: string) => void;
+interface RemoveTodoInterface {
+    (name: TodoInterface["name"]): void;
 }
 
-export type { TodoInterface, AppContextInterface }
+interface MoveTodoInterface {
+    (name: string): void;
+}
+
+interface ChangeTodoInterface {
+    (changedTodo: TodoInterface): void;
+}
+
+interface AppContextInterface {
+    todos: TodoInterface[];
+    changeTodo?: ChangeTodoInterface;
+    removeTodo?: RemoveTodoInterface;
+    moveUpTodo?: MoveTodoInterface;
+    moveDownTodo?: MoveTodoInterface;
+}
+
+interface SortTodosInterface {
+    (cell: keyof TodoInterface): void;
+}
+
+export type {
+    TodoInterface,
+    AppContextInterface,
+    SortTodosInterface,
+    ChangeTodoInterface,
+    MoveTodoInterface,
+    RemoveTodoInterface
+}

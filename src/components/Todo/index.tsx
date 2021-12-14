@@ -8,7 +8,7 @@ import ArrowDropUpIcon from '@material-ui/icons/ArrowDropUp';
 import ArrowDropDownIcon from '@material-ui/icons/ArrowDropDown';
 import DeleteIcon from '@material-ui/icons/Delete';
 
-import { TodoInterface } from "../../types";
+import { ChangeTodoInterface, MoveTodoInterface, RemoveTodoInterface, TodoInterface } from "../../types";
 
 const useStyles = makeStyles({
     operations: {
@@ -18,45 +18,61 @@ const useStyles = makeStyles({
 
 interface TodoPropsInterface {
     todo: TodoInterface;
-    moveUp: () => void;
-    moveDown: () => void;
-    removeTodo: () => void;
+    moveUpTodo: MoveTodoInterface;
+    moveDownTodo: MoveTodoInterface;
+    removeTodo: RemoveTodoInterface;
+    changeTodo: ChangeTodoInterface;
 }
 
-const Todo = (props: TodoPropsInterface) => {
-    const [todo, setTodo] = useState(props.todo);
-    const [isUpdate, setIsUpdate] = useState(false);
+const Todo = ({ todo, removeTodo, moveUpTodo, moveDownTodo, changeTodo }: TodoPropsInterface) => {
+    const [isChanging, setIsChanging] = useState(false);
 
     const classes = useStyles();
+
+    const onRemoveTodo = () => {
+       const confirm = window.confirm('Вы уверены?');
+
+       if (confirm) {
+           removeTodo(todo.name);
+       }
+    };
+
+    const onMoveDownTodo = () => {
+      moveDownTodo(todo.name);
+    };
+
+    const onMoveUpTodo = () => {
+        moveUpTodo(todo.name);
+    };
 
     return (
         <TableRow>
             <TableCell>
-                <ArrowDropUpIcon onClick={() => props.moveUp()} className={classes.operations}/>
-                <ArrowDropDownIcon onClick={() => props.moveDown()} className={classes.operations}/>
+                <ArrowDropUpIcon onClick={onMoveUpTodo} className={classes.operations}/>
+                <ArrowDropDownIcon onClick={onMoveDownTodo} className={classes.operations}/>
             </TableCell>
             <TableCell>
-                {isUpdate ? (
-                    <Input value={todo.name} onChange={(e) => setTodo({ ...todo, name: e.target.value })}/>
+                {isChanging ? (
+                    <Input value={todo.name} onChange={(e) => changeTodo({ ...todo, name: e.target.value })}/>
                 ) : (
                     todo.name
                 )}
             </TableCell>
             <TableCell align="right">
-                {isUpdate ? (
+                {isChanging ? (
                     <Input
                         value={todo.desc}
-                        onChange={(e) => setTodo({ ...todo, desc: e.target.value })}
+                        onChange={(e) => changeTodo({ ...todo, desc: e.target.value })}
                     />
                 ) : (
                     todo.desc
                 )}
             </TableCell>
             <TableCell align="right">
-                {isUpdate ? (
+                {isChanging ? (
                     <Switch
                         checked={todo.isActive}
-                        onChange={(e) => setTodo({ ...todo, isActive: e.target.checked })}
+                        onChange={(e) => changeTodo({ ...todo, isActive: e.target.checked })}
                         color="primary"
                     />
                 ) : (todo.isActive ? <CheckIcon/> : <CloseIcon/>)}
@@ -65,18 +81,18 @@ const Todo = (props: TodoPropsInterface) => {
                 {todo.createdAt}
             </TableCell>
             <TableCell>
-                {isUpdate ? (
-                    <CheckIcon className={classes.operations} onClick={() => setIsUpdate(false)}/>
+                {isChanging ? (
+                    <CheckIcon className={classes.operations} onClick={() => setIsChanging(false)}/>
                 ) : (
-                    <CreateIcon className={classes.operations} onClick={() => setIsUpdate(true)}/>
+                    <CreateIcon className={classes.operations} onClick={() => setIsChanging(true)}/>
                 )}
                 <DeleteIcon
                     className={classes.operations}
-                    onClick={() => window.confirm('Вы уверены?') && props.removeTodo()}
+                    onClick={onRemoveTodo}
                 />
             </TableCell>
         </TableRow>
     );
 };
 
-export default Todo;
+export default React.memo(Todo);
